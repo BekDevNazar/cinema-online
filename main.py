@@ -1,8 +1,7 @@
-from fastapi import Depends, FastAPI
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import FastAPI
 
-from database import get_db, lifespan
+from database import lifespan
+from routers.auth import router as auth_router
 
 
 app = FastAPI(
@@ -11,19 +10,4 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
-
-
-@app.get("/health/db")
-async def database_health(
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(text("SELECT 1"))
-
-    return {
-        "database": "connected",
-        "result": result.scalar_one(),
-    }
+app.include_router(auth_router)
