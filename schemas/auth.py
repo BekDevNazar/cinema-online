@@ -23,3 +23,13 @@ class UserResponseSchema(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserLoginSchema(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponseSchema(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
