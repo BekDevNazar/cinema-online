@@ -24,6 +24,7 @@ def create_access_token(user_id) -> str:
 
     payload = {
         "sub": str(user_id),
+        "type": "access",
         "exp": expires_at
     }
 

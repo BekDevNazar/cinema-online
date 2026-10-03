@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from database import get_db
+from dependencies import get_current_user
 from models.user import User
 from schemas.auth import UserRegisterSchema, UserResponseSchema, TokenResponseSchema, UserLoginSchema
 from security import hash_password, verify_password, create_access_token
@@ -83,3 +84,13 @@ async def user_login(
     return TokenResponseSchema(
         access_token=access_token
     )
+
+
+@router.get(
+    "/me",
+    response_model=UserResponseSchema,
+)
+async def get_my_profile(
+    current_user: User = Depends(get_current_user),
+):
+    return current_user
