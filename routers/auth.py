@@ -1,19 +1,36 @@
+from datetime import datetime, timezone, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
+from config import settings
 from database import get_db
 from dependencies import get_current_user
-from models.user import User
-from schemas.auth import UserRegisterSchema, UserResponseSchema, TokenResponseSchema, UserLoginSchema
-from security import hash_password, verify_password, create_access_token
+from models.user import User, RefreshToken
+from schemas.auth import UserRegisterSchema, UserResponseSchema, TokenResponseSchema, UserLoginSchema, \
+    RefreshTokenCheckSchema
+from security import hash_password, verify_password, create_access_token, generate_refresh_token, \
+    hash_refresh_token
 
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
+
+
+def create_refresh_token(user_id: int, refresh_token: str) -> RefreshToken:
+    refresh_token_hash = hash_refresh_token(refresh_token)
+    refresh_token_record = RefreshToken(
+        user_id=user_id,
+        token_hash=refresh_token_hash,
+        expires_at=datetime.now(timezone.utc) + timedelta(
+            days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+        ),
+    )
+    return refresh_token_record
 
 
 @router.post(
@@ -81,8 +98,16 @@ async def user_login(
             detail="Invalid email or password",
         )
     access_token = create_access_token(user.id)
+
+    refresh_token = generate_refresh_token()
+    refresh_token_record = create_refresh_token(user.id, refresh_token)
+
+    db.add(refresh_token_record)
+    await db.commit()
+
     return TokenResponseSchema(
-        access_token=access_token
+        access_token=access_token,
+        refresh_token=refresh_token,
     )
 
 
@@ -94,3 +119,84 @@ async def get_my_profile(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+
+@router.post(
+    "/refresh/",
+    response_model=TokenResponseSchema
+)
+async def update_access_token(
+        refresh_data: RefreshTokenCheckSchema,
+        db: AsyncSession = Depends(get_db)
+):
+    refresh_token_hash = hash_refresh_token(refresh_data.refresh_token)
+
+    result = await db.execute(
+        select(RefreshToken)
+        .where(RefreshToken.token_hash == refresh_token_hash)
+    )
+    refresh_token = result.scalar_one_or_none()
+    if ((refresh_token is None)
+            or (refresh_token.expires_at < datetime.now(timezone.utc)))\
+            or (refresh_token.revoked_at is not None):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Problem with refresh token"
+        )
+    user_id = refresh_token.user_id
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not User"
+        )
+
+    new_access_token = create_access_token(
+        user.id
+    )
+    refresh_token.revoked_at = datetime.now(timezone.utc)
+    raw_refresh_token = generate_refresh_token()
+    new_refresh_token = create_refresh_token(user_id, raw_refresh_token)
+    db.add(new_refresh_token)
+    await db.commit()
+    return {
+        "access_token": new_access_token,
+        "refresh_token": raw_refresh_token
+    }
+
+
+@router.post("/logout/")
+async def logout(
+        data: RefreshTokenCheckSchema,
+        db: AsyncSession = Depends(get_db)
+):
+    hash_token = hash_refresh_token(data.refresh_token)
+    result = await db.execute(
+        select(RefreshToken)
+        .where(RefreshToken.token_hash == hash_token)
+    )
+    refresh_token = result.scalar_one_or_none()
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Refresh token not found",
+        )
+    if refresh_token.revoked_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Refresh token has already been revoked",
+        )
+    refresh_token.revoked_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {
+        "detail": "Logout was completed"
+    }
+
+
+
+
+
+
+
+
+
