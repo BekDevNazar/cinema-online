@@ -3,7 +3,6 @@ from datetime import datetime
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
-    Numeric,
     String,
     Text,
     func,
@@ -25,6 +24,10 @@ class Movie(Base):
             "rating >= 0 AND rating <= 10",
             name="check_movie_rating_range",
         ),
+        CheckConstraint(
+            "release_year >= 1900",
+            name="check_movie_release_year"
+        )
     )
 
     id: Mapped[int] = mapped_column(
@@ -51,7 +54,6 @@ class Movie(Base):
     )
 
     rating: Mapped[float] = mapped_column(
-        Numeric(3, 1),
         nullable=False,
         default=0,
     )
