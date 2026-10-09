@@ -30,3 +30,13 @@ class ResponseMovieScheme(CreateMovieScheme):
     id: int
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class MovieList(BaseModel):
+    movies: list[ResponseMovieScheme]
+    prev_page: str | None
+    next_page: str | None
+    total_pages: int
+    total_items: int
+    page: int
+    page_size: int
