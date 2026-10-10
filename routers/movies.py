@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 
 from database import get_db
 from models.movie import Movie
-from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre
+from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre, MovieUpdate
 
 router = APIRouter(
     prefix="/movies",
@@ -139,13 +139,51 @@ async def get_movie_by_id(
     )
     movie = result.scalar_one_or_none()
 
-    if not movie:
+    if movie is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Movie not found"
         )
     return movie
 
+
+@router.patch(
+    "/{movie_id}/",
+    response_model=ResponseMovieScheme
+)
+async def update_movie(
+        movie_id: int,
+        data: MovieUpdate,
+        db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Movie).where(Movie.id == movie_id)
+    )
+    movie = result.scalar_one_or_none()
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Film not found"
+        )
+    update_data = data.model_dump(exclude_unset=True, mode="json")
+    for key, value in update_data.items():
+        setattr(movie, key, value)
+    await db.commit()
+    await db.refresh(movie)
+
+    return movie
+
+
+@router.delete("/{movie_id}/", status_code=204)
+async def del_movie_by_id(movie_id: int, db: AsyncSession = Depends(get_db)):
+    movie = await db.get(Movie, movie_id)
+    if movie is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Movie with the given ID was not found."
+        )
+    await db.delete(movie)
+    await db.commit()
 
 
 
