@@ -1,6 +1,19 @@
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field
+from enum import Enum
+
+
+class MovieGenre(str, Enum):
+    action = "action"
+    comedy = "comedy"
+    drama = "drama"
+    horror = "horror"
+    sci_fi = "sci-fi"
+    thriller = "thriller"
+    fantasy = "fantasy"
+    animation = "animation"
+    documentary = "documentary"
 
 
 class CreateMovieScheme(BaseModel):
@@ -19,10 +32,7 @@ class CreateMovieScheme(BaseModel):
         ge=0,
         le=10
     )
-    genre: str = Field(
-        max_length=100,
-        min_length=1,
-    )
+    genre: MovieGenre
     poster_url: str | None = Field(default=None)
 
 
