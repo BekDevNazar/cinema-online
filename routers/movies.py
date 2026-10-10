@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select, func
 from starlette import status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,3 +123,32 @@ async def get_movies(
         "page": page,
         "page_size": page_size,
     }
+
+
+@router.get(
+    "/{movie_id}/",
+    response_model=ResponseMovieScheme,
+    status_code=status.HTTP_200_OK
+)
+async def get_movie_by_id(
+        movie_id: int,
+        db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Movie).where(Movie.id == movie_id)
+    )
+    movie = result.scalar_one_or_none()
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+    return movie
+
+
+
+
+
+
+
