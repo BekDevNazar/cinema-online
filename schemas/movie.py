@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from enum import Enum
 
 
@@ -50,3 +50,49 @@ class MovieList(BaseModel):
     total_items: int
     page: int
     page_size: int
+
+
+
+class MovieUpdate(BaseModel):
+    title: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+    )
+    description: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+    release_year: int | None = Field(
+        default=None,
+        ge=1900,
+        le=datetime.now(timezone.utc).year,
+    )
+    duration_minutes: int | None = Field(
+        default=None,
+        gt=0,
+    )
+    rating: float | None = Field(
+        default=None,
+        ge=0,
+        le=10,
+    )
+    genre: MovieGenre | None = None
+    poster_url: str | None = None
+
+    @model_validator(mode="after")
+    def check_null_values(self):
+        non_nullable_fields = {
+            "title",
+            "description",
+            "release_year",
+            "duration_minutes",
+            "rating",
+            "genre",
+        }
+
+        for field in self.model_fields_set:
+            if field in non_nullable_fields and getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+
+        return self
