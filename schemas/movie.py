@@ -115,3 +115,11 @@ class ReviewResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReviewUpdate(BaseModel):
+    text: str | None = Field(min_length=1, max_length=550)
+    rating: float | None = Field(
+        ge=0,
+        le=10,
+    )

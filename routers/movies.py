@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
+from pydantic_settings.sources.providers import aws
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.util import await_
 from starlette import status
 from sqlalchemy.ext.asyncio import AsyncSession
 from urllib.parse import urlencode
@@ -11,7 +13,7 @@ from models.movie import Movie
 from models.review import Review
 from models.user import User
 from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre, MovieUpdate, ReviewCreate, \
-    ReviewResponse
+    ReviewResponse, ReviewUpdate
 
 router = APIRouter(
     prefix="/movies",
@@ -220,6 +222,16 @@ async def create_review(
             rating=data.rating
         )
         db.add(review)
+        await db.flush()
+
+        average_rating = await db.scalar(
+            select(func.avg(Review.rating)).where(
+                Review.movie_id == movie_id
+            )
+        )
+
+        movie.rating = float(average_rating or 0)
+
         await db.commit()
 
     except IntegrityError:
@@ -259,5 +271,97 @@ async def get_movie_reviews(
     return reviews
 
 
+@router.patch(
+    "/{movie_id}/reviews/{review_id}/",
+    response_model=ReviewResponse
+)
+async def update_review(
+        review_id: int,
+        movie_id: int,
+        data: ReviewUpdate,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    movie = await db.get(Movie, movie_id)
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+    result = await db.execute(
+        select(Review).where(
+            Review.id == review_id,
+            Review.movie_id == movie_id,
+        )
+    )
+    review = result.scalar_one_or_none()
+
+    if review is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review not found",
+        )
+    if review.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not the author of this review",
+        )
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(review, key, value)
+    if "rating" in update_data:
+        await db.flush()
+
+        average_rating = await db.scalar(
+            select(func.avg(Review.rating)).where(
+                Review.movie_id == movie_id
+            )
+        )
+
+        movie.rating = float(average_rating or 0)
+
+    await db.commit()
+    await db.refresh(review)
+
+    return review
 
 
+@router.delete(
+    "/{movie_id}/reviews/{review_id}/",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_review(
+        movie_id: int,
+        review_id: int,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    movie = await db.get(Movie, movie_id)
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+    result = await db.execute(
+        select(Review).where(Review.id == review_id, Review.movie_id == movie_id)
+    )
+    review = result.scalar_one_or_none()
+    if review is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Incorrect data"
+        )
+    if review.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not the author of this review",
+        )
+    await db.delete(review)
+    await db.flush()
+    average_rating = await db.scalar(
+        select(func.avg(Review.rating)).where(Review.movie_id == movie_id)
+    )
+    movie.rating = float(average_rating or 0)
+
+
+    await db.commit()
