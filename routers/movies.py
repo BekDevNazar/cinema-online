@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from starlette import status
 from sqlalchemy.ext.asyncio import AsyncSession
 from urllib.parse import urlencode
 
 from database import get_db
+from dependencies import get_current_user
 from models.movie import Movie
-from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre, MovieUpdate
+from models.review import Review
+from models.user import User
+from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre, MovieUpdate, ReviewCreate, \
+    ReviewResponse
 
 router = APIRouter(
     prefix="/movies",
@@ -186,6 +191,72 @@ async def del_movie_by_id(movie_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
 
+@router.post(
+    "/{movie_id}/reviews/",
+    response_model=ReviewResponse,
+    status_code=status.HTTP_201_CREATED
+)
+async def create_review(
+        movie_id: int,
+        data: ReviewCreate,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Movie).where(Movie.id == movie_id)
+    )
+    movie = result.scalar_one_or_none()
+
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+    try:
+        review = Review(
+            user_id=current_user.id,
+            movie_id=movie_id,
+            text=data.text,
+            rating=data.rating
+        )
+        db.add(review)
+        await db.commit()
+
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already left a comment"
+        )
+    await db.refresh(review)
+    return review
+
+
+@router.get(
+    "/{movie_id}/reviews/",
+    response_model=list[ReviewResponse]
+)
+async def get_movie_reviews(
+    movie_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    movie = await db.get(Movie, movie_id)
+
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found",
+        )
+
+    result = await db.execute(
+        select(Review)
+        .where(Review.movie_id == movie_id)
+        .order_by(Review.created_at.desc())
+    )
+
+    reviews = result.scalars().all()
+
+    return reviews
 
 
 

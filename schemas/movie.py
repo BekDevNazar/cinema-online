@@ -96,3 +96,22 @@ class MovieUpdate(BaseModel):
                 raise ValueError(f"{field} cannot be null")
 
         return self
+
+
+class ReviewCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=550)
+    rating: float = Field(
+        ge=0,
+        le=10,
+    )
+
+
+class ReviewResponse(BaseModel):
+    id: int
+    user_id: int
+    movie_id: int
+    text: str
+    rating: float
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
