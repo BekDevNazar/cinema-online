@@ -123,3 +123,11 @@ class ReviewUpdate(BaseModel):
         ge=0,
         le=10,
     )
+
+
+class FavoriteResponse(BaseModel):
+    user_id: int
+    movie_id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
