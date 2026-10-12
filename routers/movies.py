@@ -9,11 +9,11 @@ from urllib.parse import urlencode
 
 from database import get_db
 from dependencies import get_current_user
-from models.movie import Movie
+from models.movie import Movie, Favorite
 from models.review import Review
 from models.user import User
 from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre, MovieUpdate, ReviewCreate, \
-    ReviewResponse, ReviewUpdate
+    ReviewResponse, ReviewUpdate, FavoriteResponse
 
 router = APIRouter(
     prefix="/movies",
@@ -364,4 +364,68 @@ async def delete_review(
     movie.rating = float(average_rating or 0)
 
 
+    await db.commit()
+
+
+@router.post(
+    "/{movie_id}/favorite/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=FavoriteResponse
+)
+async def add_favorite_movie(
+        movie_id: int,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    movie = await db.get(Movie, movie_id)
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+    try:
+        new_favorite = Favorite(
+            user_id=current_user.id,
+            movie_id=movie_id,
+        )
+
+        db.add(new_favorite)
+        await db.commit()
+        await db.refresh(new_favorite)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already added this movie to favorites"
+        )
+    return new_favorite
+
+
+@router.delete(
+    "/{movie_id}/favorite/",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_favorite(
+        movie_id: int,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    movie = await db.get(Movie, movie_id)
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+    result = await db.execute(
+        select(Favorite)
+        .where(Favorite.movie_id == movie_id,
+               Favorite.user_id == current_user.id)
+    )
+    favorite = result.scalar_one_or_none()
+    if favorite is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This movie isn't in your favorite"
+        )
+    await db.delete(favorite)
     await db.commit()
