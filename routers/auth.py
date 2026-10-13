@@ -191,12 +191,3 @@ async def logout(
     return {
         "detail": "Logout was completed"
     }
-
-
-
-
-
-
-
-
-

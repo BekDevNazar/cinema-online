@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
-from pydantic_settings.sources.providers import aws
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.util import await_
 from starlette import status
 from sqlalchemy.ext.asyncio import AsyncSession
 from urllib.parse import urlencode
 
 from database import get_db
 from dependencies import get_current_user
-from models.movie import Movie, Favorite
+from models.favorite import Favorite
+from models.movie import Movie
 from models.review import Review
 from models.user import User
 from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre, MovieUpdate, ReviewCreate, \
