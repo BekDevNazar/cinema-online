@@ -5,7 +5,7 @@ from sqlalchemy import (
     DateTime,
     String,
     Text,
-    func,
+    func
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
