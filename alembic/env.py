@@ -15,6 +15,7 @@ import models.user
 import models.movie
 import models.review
 import models.favorite
+import models.follow
 
 
 target_metadata = Base.metadata
