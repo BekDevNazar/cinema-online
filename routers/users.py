@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -8,9 +8,11 @@ from database import get_db
 from dependencies import get_current_user
 from models.favorite import Favorite
 from models.follow import Follow
+from models.message import Message
 from models.movie import Movie
 from models.review import Review
 from models.user import User
+from schemas.message import MessageResponse, MessageCreate, ChatResponse
 from schemas.movie import ResponseMovieScheme
 from schemas.user import PublicUserProfileResponse, PublicUserResponse
 
@@ -213,3 +215,101 @@ async def search_following(
     )
     user_following = result.scalars().all()
     return user_following
+
+
+@router.post(
+    "/{user_id}/messages/",
+    response_model=MessageResponse,
+    status_code=status.HTTP_201_CREATED
+)
+async def create_messages(
+        user_id: int,
+        message_data: MessageCreate,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    if current_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can't send a message to yourself",
+        )
+    message = Message(
+        sender_id=current_user.id,
+        receiver_id=user_id,
+        text=message_data.text,
+    )
+    db.add(message)
+    await db.commit()
+    await db.refresh(message)
+    return message
+
+
+@router.get(
+    "/{user_id}/messages/",
+    response_model=list[MessageResponse]
+)
+async def check_all_messages(
+        user_id: int,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    result = await db.execute(
+        select(Message).where(
+            or_(
+                (Message.sender_id == current_user.id) & (Message.receiver_id == user_id),
+                (Message.sender_id == user_id) & (Message.receiver_id == current_user.id)
+            )
+        ).order_by(Message.created_at)
+    )
+    messages = result.scalars().all()
+    return messages
+
+
+@router.get(
+    "/me/conversations/",
+    response_model=list[ChatResponse]
+)
+async def check_all_chat(
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    result_1 = await db.execute(
+        select(Message, User)
+        .join(User, Message.receiver_id == User.id)
+        .where(Message.sender_id == current_user.id)
+    )
+    result_2 = await db.execute(
+        select(Message, User)
+        .join(User, Message.sender_id == User.id)
+        .where(Message.receiver_id == current_user.id)
+    )
+    sent_rows = result_1.all()
+    received_rows = result_2.all()
+
+    all_rows = sent_rows + received_rows
+    all_rows.sort(
+        key=lambda row: row[0].created_at,
+        reverse=True
+    )
+    conversations = {}
+    for message, user in all_rows:
+        if user.id not in conversations:
+            conversations[user.id] = {
+                "user_id": user.id,
+                "username": user.username,
+                "last_message": message.text,
+                "last_message_created_at": message.created_at,
+            }
+    return list(conversations.values())
