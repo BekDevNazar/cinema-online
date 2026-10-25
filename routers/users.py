@@ -10,10 +10,12 @@ from models.favorite import Favorite
 from models.follow import Follow
 from models.message import Message
 from models.movie import Movie
+from models.notification import Notification
 from models.review import Review
 from models.user import User
 from schemas.message import MessageResponse, MessageCreate, ChatResponse
 from schemas.movie import ResponseMovieScheme
+from schemas.notification import NotificationResponseSchema
 from schemas.user import PublicUserProfileResponse, PublicUserResponse
 
 router = APIRouter(
@@ -120,13 +122,21 @@ async def follow_user(
             status_code=status.HTTP_409_CONFLICT,
             detail="You have already follow this user"
         )
-
     follow = Follow(
         follower_id=current_user.id,
         following_id=user_id,
     )
 
+    notification = Notification(
+        user_id=user_id,
+        type="new_follower",
+        message=f"User {current_user.id} started following you",
+        is_read=False,
+    )
+
     db.add(follow)
+    db.add(notification)
+
 
     try:
         await db.commit()
@@ -244,6 +254,13 @@ async def create_messages(
         receiver_id=user_id,
         text=message_data.text,
     )
+    notification = Notification(
+        user_id=user_id,
+        type="new_message",
+        message=f"User {current_user.username} sent you a message",
+        is_read=False,
+    )
+    db.add(notification)
     db.add(message)
     await db.commit()
     await db.refresh(message)
@@ -313,3 +330,47 @@ async def check_all_chat(
                 "last_message_created_at": message.created_at,
             }
     return list(conversations.values())
+
+
+@router.get(
+    "/me/notifications/",
+    response_model=list[NotificationResponseSchema]
+)
+async def get_my_notification(
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Notification)
+        .where(Notification.user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+    )
+    notification = result.scalars().all()
+    return notification
+
+
+@router.patch(
+    "/me/notifications/{notification_id}/read/",
+    response_model=NotificationResponseSchema
+)
+async def change_notification(
+        notification_id: int,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
+):
+    notification = await db.get(Notification, notification_id)
+    if notification is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+    if notification.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+
+    notification.is_read = True
+    await db.commit()
+    await db.refresh(notification)
+    return notification

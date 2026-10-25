@@ -5,6 +5,7 @@ from starlette import status
 from sqlalchemy.ext.asyncio import AsyncSession
 from urllib.parse import urlencode
 
+from admin_dependencies import get_current_admin
 from database import get_db
 from dependencies import get_current_user
 from models.favorite import Favorite
@@ -27,7 +28,8 @@ router = APIRouter(
 )
 async def create_movie(
         data: CreateMovieScheme,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_admin)
 ):
     movie = Movie(
         title=data.title,
@@ -160,7 +162,8 @@ async def get_movie_by_id(
 async def update_movie(
         movie_id: int,
         data: MovieUpdate,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_admin)
 ):
     result = await db.execute(
         select(Movie).where(Movie.id == movie_id)
@@ -181,7 +184,11 @@ async def update_movie(
 
 
 @router.delete("/{movie_id}/", status_code=204)
-async def del_movie_by_id(movie_id: int, db: AsyncSession = Depends(get_db)):
+async def del_movie_by_id(
+        movie_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_admin)
+):
     movie = await db.get(Movie, movie_id)
     if movie is None:
         raise HTTPException(

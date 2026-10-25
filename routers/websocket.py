@@ -1,13 +1,12 @@
 import jwt
-from fastapi import APIRouter, Query, HTTPException, Depends, WebSocket
+from fastapi import APIRouter, Query, Depends, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.functions import current_user
-from starlette import status
 from starlette.websockets import WebSocketDisconnect
 
 from config import settings
 from database import get_db
 from models.message import Message
+from models.notification import Notification
 from models.user import User
 from websocket_manager import manager
 
@@ -76,8 +75,15 @@ async def send_message(
                     receiver_id=user_id,
                     text=text,
                 )
+                notification = Notification(
+                    user_id=user_id,
+                    type="new_message",
+                    message=f"User {user.username} sent you a message",
+                    is_read=False,
+                )
                 try:
                     db.add(message)
+                    db.add(notification)
                     await db.commit()
                     await db.refresh(message)
                 except Exception:
@@ -104,7 +110,7 @@ async def send_message(
                 )
             elif event_type == "message_read":
                 message_id = data.get("message_id")
-                if not isinstance(message_id, int):
+                if type(message_id) is not int or message_id <= 0:
                     await websocket.close(code=1008)
                     return
                 message = await db.get(Message, message_id)

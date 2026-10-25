@@ -17,6 +17,7 @@ import models.review
 import models.favorite
 import models.follow
 import models.message
+import models.notification
 
 
 target_metadata = Base.metadata
