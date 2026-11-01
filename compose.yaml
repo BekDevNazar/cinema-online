@@ -1,3 +1,4 @@
+
 services:
   db:
     image: postgres:17
@@ -20,6 +21,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build: .
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env.docker
+
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   cinema_postgres_data:

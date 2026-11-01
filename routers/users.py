@@ -317,7 +317,10 @@ async def check_all_chat(
 
     all_rows = sent_rows + received_rows
     all_rows.sort(
-        key=lambda row: row[0].created_at,
+        key=lambda row: (
+            row[0].created_at,
+            row[0].id
+        ),
         reverse=True
     )
     conversations = {}
