@@ -11,6 +11,7 @@ from models.user import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(
         bearer_scheme
@@ -33,9 +34,10 @@ async def get_current_user(
             algorithms=[settings.JWT_ALGORITHM],
             options={"require": ["sub", "exp", "type"]},
         )
+
         if payload.get("type") != "access":
             raise auth_error
-        
+
         user_id = int(payload["sub"])
     except (jwt.InvalidTokenError, ValueError, TypeError):
         raise auth_error

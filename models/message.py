@@ -15,7 +15,7 @@ class Message(Base):
             name="ck_message_not_self",
         ),
     )
-    
+
     id: Mapped[int] = mapped_column(
         primary_key=True,
         autoincrement=True

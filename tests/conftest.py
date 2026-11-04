@@ -62,7 +62,12 @@ async def db_session(test_engine):
 @pytest_asyncio.fixture
 async def client(db_session):
     async def override_get_db():
-        yield db_session
+        async with AsyncSession(
+            bind=db_session.bind,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        ) as session:
+            yield session
 
     app.dependency_overrides[get_db] = override_get_db
 

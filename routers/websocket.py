@@ -1,5 +1,7 @@
+import asyncio
+
 import jwt
-from fastapi import APIRouter, Query, Depends, WebSocket
+from fastapi import APIRouter, Depends, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.websockets import WebSocketDisconnect
 
@@ -18,11 +20,33 @@ router = APIRouter(
 
 @router.websocket("/chat/{user_id}")
 async def send_message(
-        user_id: int,
-        websocket: WebSocket,
-        token: str = Query(),
-        db: AsyncSession = Depends(get_db),
+    user_id: int,
+    websocket: WebSocket,
+    db: AsyncSession = Depends(get_db),
 ):
+    await websocket.accept()
+
+    try:
+        auth_data = await asyncio.wait_for(
+            websocket.receive_json(),
+            timeout=5,
+        )
+    except WebSocketDisconnect:
+        return
+    except (TimeoutError, ValueError):
+        await websocket.close(code=1008)
+        return
+
+    if (
+        not isinstance(auth_data, dict)
+        or auth_data.get("type") != "auth"
+        or not isinstance(auth_data.get("token"), str)
+    ):
+        await websocket.close(code=1008)
+        return
+
+    token = auth_data["token"]
+
     try:
         access_token = jwt.decode(
             token,
@@ -30,27 +54,28 @@ async def send_message(
             algorithms=[settings.JWT_ALGORITHM],
             options={"require": ["sub", "exp", "type"]},
         )
+
         if access_token.get("type") != "access":
             await websocket.close(code=1008)
             return
+
         my_id = int(access_token["sub"])
+
     except (jwt.InvalidTokenError, ValueError, TypeError):
         await websocket.close(code=1008)
         return
 
     recipient = await db.get(User, user_id)
-    if recipient is None:
-        await websocket.close(code=1008)
-        return
     user = await db.get(User, my_id)
 
-    if user is None:
+    if recipient is None or user is None or my_id == user_id:
         await websocket.close(code=1008)
         return
 
-    if my_id == user_id:
-        await websocket.close(code=1008)
-        return
+    username = user.username
+
+    await db.rollback()
+
     await manager.connect(
         websocket, my_id
     )
@@ -60,8 +85,8 @@ async def send_message(
             if not isinstance(data, dict):
                 await websocket.close(code=1008)
                 return
-            event_type  = data.get("type")
-            if event_type  == "message":
+            event_type = data.get("type")
+            if event_type == "message":
                 text = data.get("text")
                 if not isinstance(text, str):
                     await websocket.close(code=1008)
@@ -78,27 +103,32 @@ async def send_message(
                 notification = Notification(
                     user_id=user_id,
                     type="new_message",
-                    message=f"User {user.username} sent you a message",
+                    message=f"User {username} sent you a message",
                     is_read=False,
                 )
                 try:
                     db.add(message)
                     db.add(notification)
-                    await db.commit()
+
+                    await db.flush()
                     await db.refresh(message)
+
+                    message_data = {
+                        "type": "message",
+                        "id": message.id,
+                        "sender_id": message.sender_id,
+                        "receiver_id": message.receiver_id,
+                        "text": message.text,
+                        "is_read": message.is_read,
+                        "created_at": message.created_at.isoformat(),
+                    }
+
+                    await db.commit()
+
                 except Exception:
                     await db.rollback()
                     await websocket.close(code=1008)
                     return
-                message_data = {
-                    "type": "message",
-                    "id": message.id,
-                    "sender_id": message.sender_id,
-                    "receiver_id": message.receiver_id,
-                    "text": message.text,
-                    "is_read": message.is_read,
-                    "created_at": message.created_at.isoformat(),
-                }
 
                 await manager.send_personal_message(
                     user_id=user_id,

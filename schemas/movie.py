@@ -52,7 +52,6 @@ class MovieList(BaseModel):
     page_size: int
 
 
-
 class MovieUpdate(BaseModel):
     title: str | None = Field(
         default=None,

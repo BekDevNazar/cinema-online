@@ -102,7 +102,6 @@ async def test_login_success(client):
     assert len(data["refresh_token"]) > 0
 
 
-
 @pytest.mark.asyncio
 async def test_login_invalid_password(client):
     register_response = await client.post(
@@ -176,7 +175,6 @@ async def test_get_me_without_token(client):
     assert data["detail"] == "Invalid or expired token"
 
 
-
 @pytest.mark.asyncio
 async def test_refresh_token(client):
     register_response = await client.post(
@@ -240,7 +238,6 @@ async def test_refresh_token(client):
     )
 
     assert reuse_response.status_code == 401
-
 
 
 @pytest.mark.asyncio

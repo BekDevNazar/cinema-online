@@ -12,8 +12,17 @@ from models.favorite import Favorite
 from models.movie import Movie
 from models.review import Review
 from models.user import User
-from schemas.movie import ResponseMovieScheme, CreateMovieScheme, MovieList, MovieGenre, MovieUpdate, ReviewCreate, \
-    ReviewResponse, ReviewUpdate, FavoriteResponse
+from schemas.movie import (
+    ResponseMovieScheme,
+    CreateMovieScheme,
+    MovieList,
+    MovieGenre,
+    MovieUpdate,
+    ReviewCreate,
+    ReviewResponse,
+    ReviewUpdate,
+    FavoriteResponse
+)
 
 router = APIRouter(
     prefix="/movies",
@@ -120,7 +129,6 @@ async def get_movies(
             "page": page + 1
         }
         next_page = f"/movies/?{urlencode(next_params)}"
-
 
     return {
         "movies": movies,
@@ -368,7 +376,6 @@ async def delete_review(
         select(func.avg(Review.rating)).where(Review.movie_id == movie_id)
     )
     movie.rating = float(average_rating or 0)
-
 
     await db.commit()
 

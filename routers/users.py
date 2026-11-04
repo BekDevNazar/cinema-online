@@ -137,7 +137,6 @@ async def follow_user(
     db.add(follow)
     db.add(notification)
 
-
     try:
         await db.commit()
     except IntegrityError:
@@ -285,8 +284,10 @@ async def check_all_messages(
     result = await db.execute(
         select(Message).where(
             or_(
-                (Message.sender_id == current_user.id) & (Message.receiver_id == user_id),
-                (Message.sender_id == user_id) & (Message.receiver_id == current_user.id)
+                (Message.sender_id == current_user.id)
+                & (Message.receiver_id == user_id),
+                (Message.sender_id == user_id)
+                & (Message.receiver_id == current_user.id)
             )
         ).order_by(Message.created_at)
     )

@@ -1,6 +1,13 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, DateTime, func, CheckConstraint, UniqueConstraint
+from sqlalchemy import (
+    ForeignKey,
+    String,
+    DateTime,
+    func,
+    CheckConstraint,
+    UniqueConstraint
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
