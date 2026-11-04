@@ -1,11 +1,11 @@
 from fastapi import WebSocket
 
+
 class ConnectionManager:
     def __init__(self) -> None:
         self.active_connections: dict[int, list[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, user_id: int) -> None:
-        await websocket.accept()
         if user_id in self.active_connections:
             self.active_connections[user_id].append(websocket)
         else:
@@ -26,5 +26,6 @@ class ConnectionManager:
 
         for websocket in self.active_connections[user_id]:
             await websocket.send_json(data)
+
 
 manager = ConnectionManager()

@@ -1,10 +1,17 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class MessageCreate(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def strip_text(cls, value):
+        if isinstance(value, str):
+            return value.strip()
+        return value
 
 
 class MessageResponse(BaseModel):

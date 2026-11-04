@@ -227,4 +227,3 @@ async def test_cannot_edit_other_users_review(client, movie):
     )
 
     assert response.status_code == 403
-

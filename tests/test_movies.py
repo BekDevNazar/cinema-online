@@ -1,6 +1,5 @@
 import pytest
 
-from database import get_db
 from sqlalchemy import select
 from models.movie import Movie
 from types import SimpleNamespace
@@ -109,7 +108,6 @@ async def test_create_movie_forbidden(client):
         app.dependency_overrides.pop(get_current_user, None)
 
 
-
 @pytest.mark.asyncio
 async def test_create_movie_as_admin(client, db_session):
     async def override_get_current_user():
@@ -141,7 +139,6 @@ async def test_create_movie_as_admin(client, db_session):
 
     finally:
         app.dependency_overrides.pop(get_current_user, None)
-
 
 
 @pytest.mark.asyncio
