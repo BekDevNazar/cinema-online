@@ -6,3 +6,10 @@ from .movie import Movie
 from .notification import Notification
 from .review import Review
 from .user import User, RefreshToken
+
+
+__all__ = [
+    "Base", "Favorite", "Follow", "Message",
+    "Movie", "Notification", "Review",
+    "User", "RefreshToken",
+]

@@ -5,12 +5,6 @@ from app.routers.auth import router as auth_router
 from app.routers.movies import router as movie_router
 from app.routers.users import router as user_router
 from app.routers.websocket import router as websocket_router
-from app.models.base import Base
-
-import app.models.user
-import app.models.movie
-
-target_metadata = Base.metadata
 
 
 app = FastAPI(

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest_asyncio
 from dotenv import dotenv_values
 from httpx import ASGITransport, AsyncClient
@@ -13,9 +11,9 @@ _CINEMA_TEST_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(_CINEMA_TEST_ROOT / '.env')
 load_dotenv(_CINEMA_TEST_ROOT / '.env.test', override=True)
 
-from app.database import get_db
-from app.main import app
-from app.models.base import Base
+from app.database import get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.base import Base  # noqa: E402
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 env = dotenv_values(ROOT_DIR / ".env.test")

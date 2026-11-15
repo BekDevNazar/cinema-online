@@ -85,10 +85,10 @@ async def test_login_success(client):
 
     login_response = await client.post(
         "/auth/login/",
-         json={
-             "email": "testuser@example.com",
-             "password": "StrongPassword123!"
-         }
+        json={
+            "email": "testuser@example.com",
+            "password": "StrongPassword123!"
+        }
     )
     assert login_response.status_code == 200
 
