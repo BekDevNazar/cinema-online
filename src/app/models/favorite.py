@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import UniqueConstraint, ForeignKey, DateTime, func
 from sqlalchemy.orm import mapped_column, Mapped
 
-from models.base import Base
+from app.models.base import Base
 
 
 class Favorite(Base):

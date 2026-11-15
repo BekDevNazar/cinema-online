@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 
-from models.movie import Movie
+from app.models.movie import Movie
 
 
 @pytest_asyncio.fixture

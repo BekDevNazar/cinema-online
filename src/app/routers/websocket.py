@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.websockets import WebSocketDisconnect
 
-from config import settings
-from database import get_db
-from models.message import Message
-from models.notification import Notification
-from models.user import User
-from websocket_manager import manager
+from app.config import settings
+from app.database import get_db
+from app.models.message import Message
+from app.models import Notification
+from app.models import User
+from app.websocket_manager import manager
 
 router = APIRouter(
     prefix="/ws",
@@ -100,17 +100,19 @@ async def send_message(
                     receiver_id=user_id,
                     text=text,
                 )
-                notification = Notification(
-                    user_id=user_id,
-                    type="new_message",
-                    message=f"User {username} sent you a message",
-                    is_read=False,
-                )
                 try:
                     db.add(message)
-                    db.add(notification)
-
                     await db.flush()
+
+                    notification = Notification(
+                        user_id=user_id,
+                        type="new_message",
+                        source_id=message.id,
+                        message=f"User {username} sent you a message",
+                        is_read=False,
+                    )
+
+                    db.add(notification)
                     await db.refresh(message)
 
                     message_data = {

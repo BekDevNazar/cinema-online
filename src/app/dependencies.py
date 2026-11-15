@@ -4,9 +4,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from config import settings
-from database import get_db
-from models.user import User
+from app.config import settings
+from app.database import get_db
+from app.models.user import User
 
 
 bearer_scheme = HTTPBearer(auto_error=False)

@@ -2,7 +2,7 @@
 import pytest
 from sqlalchemy import select, func
 
-from models.user import User
+from app.models import User
 
 
 user_data = {

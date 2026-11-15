@@ -4,19 +4,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from database import get_db
-from dependencies import get_current_user
-from models.favorite import Favorite
-from models.follow import Follow
-from models.message import Message
-from models.movie import Movie
-from models.notification import Notification
-from models.review import Review
-from models.user import User
-from schemas.message import MessageResponse, MessageCreate, ChatResponse
-from schemas.movie import ResponseMovieScheme
-from schemas.notification import NotificationResponseSchema
-from schemas.user import PublicUserProfileResponse, PublicUserResponse
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.models import Favorite
+from app.models.follow import Follow
+from app.models.message import Message
+from app.models.movie import Movie
+from app.models import Notification
+from app.models.review import Review
+from app.models import User
+from app.schemas.message import MessageResponse, MessageCreate, ChatResponse
+from app.schemas.movie import ResponseMovieScheme
+from app.schemas.notification import NotificationResponseSchema
+from app.schemas.user import PublicUserProfileResponse, PublicUserResponse
 
 router = APIRouter(
     prefix="/users",
@@ -127,18 +127,21 @@ async def follow_user(
         following_id=user_id,
     )
 
-    notification = Notification(
-        user_id=user_id,
-        type="new_follower",
-        message=f"User {current_user.id} started following you",
-        is_read=False,
-    )
-
-    db.add(follow)
-    db.add(notification)
-
     try:
+        db.add(follow)
+        await db.flush()
+
+        notification = Notification(
+            user_id=user_id,
+            type="new_follower",
+            source_id=follow.id,
+            message=f"User {current_user.id} started following you",
+            is_read=False,
+        )
+
+        db.add(notification)
         await db.commit()
+
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
@@ -253,15 +256,26 @@ async def create_messages(
         receiver_id=user_id,
         text=message_data.text,
     )
-    notification = Notification(
-        user_id=user_id,
-        type="new_message",
-        message=f"User {current_user.username} sent you a message",
-        is_read=False,
-    )
-    db.add(notification)
-    db.add(message)
-    await db.commit()
+
+    try:
+        db.add(message)
+        await db.flush()
+
+        notification = Notification(
+            user_id=user_id,
+            type="new_message",
+            source_id=message.id,
+            message=f"User {current_user.username} sent you a message",
+            is_read=False,
+        )
+
+        db.add(notification)
+        await db.commit()
+
+    except Exception:
+        await db.rollback()
+        raise
+
     await db.refresh(message)
     return message
 
