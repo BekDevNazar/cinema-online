@@ -1,23 +1,19 @@
-from pathlib import Path
-
 import pytest_asyncio
 from dotenv import dotenv_values
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
-from database import get_db
-from main import app
-from models.base import Base
+from pathlib import Path
+from dotenv import load_dotenv
 
-import models.user
-import models.movie
-import models.review
-import models.favorite
-import models.follow
-import models.message
-import models.notification
+_CINEMA_TEST_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(_CINEMA_TEST_ROOT / '.env')
+load_dotenv(_CINEMA_TEST_ROOT / '.env.test', override=True)
 
+from app.database import get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.base import Base  # noqa: E402
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 env = dotenv_values(ROOT_DIR / ".env.test")

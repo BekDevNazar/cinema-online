@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException
 from starlette import status
 
-from dependencies import get_current_user
-from models.user import User
+from app.dependencies import get_current_user
+from app.models.user import User
 
 
 async def get_current_admin(

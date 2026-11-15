@@ -1,13 +1,22 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Boolean, DateTime, func
+from sqlalchemy import ForeignKey, String, Boolean, DateTime, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import Base
+from app.models.base import Base
 
 
 class Notification(Base):
     __tablename__ = "notifications"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "type",
+            "source_id",
+            name="uq_notification_event",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -21,6 +30,9 @@ class Notification(Base):
     type: Mapped[str] = mapped_column(
         String(64),
         nullable=False
+    )
+    source_id: Mapped[int | None] = mapped_column(
+        nullable=True,
     )
     message: Mapped[str] = mapped_column(
         String(2000),

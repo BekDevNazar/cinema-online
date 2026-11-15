@@ -1,24 +1,20 @@
 import asyncio
 from logging.config import fileConfig
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from config import settings
+from app.config import settings
 
 from alembic import context
 
-from models.base import Base
-
-import models.user
-import models.movie
-import models.review
-import models.favorite
-import models.follow
-import models.message
-import models.notification
-
+import app.models  # register models
+from app.models.base import Base
 
 target_metadata = Base.metadata
 

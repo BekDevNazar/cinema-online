@@ -6,7 +6,7 @@ import secrets
 
 from pwdlib import PasswordHash
 
-from config import settings
+from app.config import settings
 
 pwd_context = PasswordHash.recommended()
 

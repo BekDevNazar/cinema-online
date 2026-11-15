@@ -6,18 +6,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
-from config import settings
-from database import get_db
-from dependencies import get_current_user
-from models.user import User, RefreshToken
-from schemas.auth import (
+from app.config import settings
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.models import User, RefreshToken
+from app.schemas.auth import (
     UserRegisterSchema,
     UserResponseSchema,
     TokenResponseSchema,
     UserLoginSchema,
     RefreshTokenCheckSchema
 )
-from security import (
+from app.security import (
     hash_password,
     verify_password,
     create_access_token,

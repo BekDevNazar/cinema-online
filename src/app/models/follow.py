@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import ForeignKey, DateTime, func, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import Base
+from app.models.base import Base
 
 
 class Follow(Base):

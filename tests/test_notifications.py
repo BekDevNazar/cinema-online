@@ -194,3 +194,107 @@ async def test_notifications_without_auth(client):
     )
 
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_duplicate_follow_notification(client):
+    _, follower = await create_test_user(
+        client, "follower", "follower@example.com"
+    )
+    target_id, target = await create_test_user(
+        client, "target", "target@example.com"
+    )
+
+    await client.post(
+        f"/users/{target_id}/follow/", headers=follower
+    )
+    await client.post(
+        f"/users/{target_id}/follow/", headers=follower
+    )
+
+    response = await client.get(
+        "/users/me/notifications/", headers=target
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_notifications_from_two_followers(client):
+    target_id, target = await create_test_user(
+        client, "target", "target@example.com"
+    )
+    _, user1 = await create_test_user(
+        client, "user1", "user1@example.com"
+    )
+    _, user2 = await create_test_user(
+        client, "user2", "user2@example.com"
+    )
+
+    await client.post(
+        f"/users/{target_id}/follow/", headers=user1
+    )
+    await client.post(
+        f"/users/{target_id}/follow/", headers=user2
+    )
+
+    response = await client.get(
+        "/users/me/notifications/", headers=target
+    )
+
+    assert len(response.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_two_messages_create_two_notifications(client):
+    _, sender = await create_test_user(
+        client, "sender", "sender@example.com"
+    )
+    receiver_id, receiver = await create_test_user(
+        client, "receiver", "receiver@example.com"
+    )
+
+    for text in ["Hello", "How are you?"]:
+        response = await client.post(
+            f"/users/{receiver_id}/messages/",
+            json={"text": text},
+            headers=sender
+        )
+        assert response.status_code == 201
+
+    response = await client.get(
+        "/users/me/notifications/", headers=receiver
+    )
+
+    assert len(response.json()) == 2
+    assert all(
+        n["type"] == "new_message"
+        for n in response.json()
+    )
+
+
+@pytest.mark.asyncio
+async def test_sender_does_not_receive_own_notification(client):
+    _, sender = await create_test_user(
+        client, "sender", "sender@example.com"
+    )
+    receiver_id, receiver = await create_test_user(
+        client, "receiver", "receiver@example.com"
+    )
+
+    await client.post(
+        f"/users/{receiver_id}/messages/",
+        json={"text": "Hello!"},
+        headers=sender
+    )
+
+    sender_response = await client.get(
+        "/users/me/notifications/", headers=sender
+    )
+    receiver_response = await client.get(
+        "/users/me/notifications/", headers=receiver
+    )
+
+    assert sender_response.json() == []
+    assert len(receiver_response.json()) == 1

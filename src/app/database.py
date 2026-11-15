@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from config import settings
+from app.config import settings
 
 
 logger = logging.getLogger(__name__)

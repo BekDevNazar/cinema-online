@@ -1,11 +1,11 @@
 import pytest
 
 from sqlalchemy import select
-from models.movie import Movie
+from app.models.movie import Movie
 from types import SimpleNamespace
 
-from main import app
-from dependencies import get_current_user
+from app.main import app
+from app.dependencies import get_current_user
 
 
 movie_data = {

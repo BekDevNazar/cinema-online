@@ -5,14 +5,14 @@ from starlette import status
 from sqlalchemy.ext.asyncio import AsyncSession
 from urllib.parse import urlencode
 
-from admin_dependencies import get_current_admin
-from database import get_db
-from dependencies import get_current_user
-from models.favorite import Favorite
-from models.movie import Movie
-from models.review import Review
-from models.user import User
-from schemas.movie import (
+from app.admin_dependencies import get_current_admin
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.models import Favorite
+from app.models.movie import Movie
+from app.models.review import Review
+from app.models import User
+from app.schemas.movie import (
     ResponseMovieScheme,
     CreateMovieScheme,
     MovieList,
